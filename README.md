@@ -22,10 +22,18 @@ Netlify's drag-and-drop deploy can't run the photo storage part, so this goes th
 - Send anyone the main link. It needs to open in Safari (iPhone) or Chrome so the camera works. If they open it inside Instagram or another app's browser, tell them to tap "Open in Safari".
 - Open `/gallery.html` on your phone or laptop, enter your password once (it's remembered on that device), and hit **Download ZIP** on any scan. That ZIP goes straight into Higgsfield.
 
-## The three modes
+## Scan types
 
-- **I'm filming myself:** front camera, ~25 seconds of spoken cues (straight, turn left, turn right, chin up/down, phone high/low). About 32 shots.
-- **Someone's filming me:** back camera, three slow laps around them (eye level, high, low). About 36 shots. Best quality, and the only mode that gets the back of the head.
-- **Upload photos or a video:** for anything already on the camera roll. A video gets split into 36 evenly spaced shots, keeping the sharpest frame near each one.
+People pick **Face** or **Full body** first. Each scan shows up in your gallery labeled with its type.
 
-Every mode grabs the sharpest frame in each moment, so motion blur gets filtered out automatically.
+**Face**
+- **I'm filming myself:** front camera. Head stays still while they sweep the phone left, right, above and below their face, then a head turn. About 36 shots.
+- **Someone's filming me:** back camera, three slow laps around them (eye level, high, low). About 36 shots. Best quality, and the only face mode that gets the back of the head.
+
+**Full body**
+- **Phone on a tripod:** no helper needed. Phone at chest height, they step back into the body outline and tap Start. A 10-second countdown gives them time to get in place, then spoken cues walk them through front, both sides, back, arms out, and two slow full spins. About 42 shots.
+- **Someone's filming me:** they stand still while a helper walks three laps around them, head to toe.
+
+**Both:** upload photos or a video from the camera roll. A video gets split into evenly spaced shots (36 for face, 48 for body), keeping the sharpest frame near each one.
+
+Every mode grabs the sharpest frame in each moment, so motion blur gets filtered out automatically. There's a **Flip camera** button before each scan starts, for using the front camera on a tripod so you can see yourself.

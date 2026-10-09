@@ -83,7 +83,8 @@ input{font:inherit;padding:11px 13px;border-radius:10px;border:1px solid var(--l
       const slug = s.id.split('_')[0];
       el.innerHTML = '<div class="row" style="justify-content:space-between"><div><h2></h2><p class="meta"></p></div><div class="row"><button class="btn primary" type="button" data-a="zip">Download ZIP</button><button class="btn danger" type="button" data-a="del">Delete</button></div></div><div class="grid"></div><p class="meta" data-msg></p>';
       el.querySelector('h2').textContent = who;
-      el.querySelector('.meta').textContent = s.files.length + ' photos · ' + prettyDate(s.id);
+      const kindLbl = /-body$/.test(s.id) ? 'Full body' : /-face$/.test(s.id) ? 'Face' : '';
+      el.querySelector('.meta').textContent = [kindLbl, s.files.length + ' photos', prettyDate(s.id)].filter(Boolean).join(' · ');
       const grid = el.querySelector('.grid');
       s.files.forEach(k => {
         const a = document.createElement('a'); a.href = photoUrl(k); a.target = '_blank'; a.rel = 'noopener';

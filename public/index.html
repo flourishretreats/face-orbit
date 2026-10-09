@@ -49,6 +49,15 @@ p{margin:0}
 #cam{position:fixed;inset:0;background:#000;display:flex;flex-direction:column}
 #cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #cam video.mirror{transform:scaleX(-1)}
+.kinds{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kind{font:inherit;font-weight:600;padding:14px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+.kind svg{width:30px;height:30px}
+.kind[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+.kind:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.body-guide{position:absolute;left:50%;top:47%;height:74%;aspect-ratio:1/2.6;max-width:70vw;transform:translate(-50%,-50%);border:3px dashed rgba(255,255,255,.5);border-radius:44% 44% 14% 14%/16% 16% 6% 6%;pointer-events:none}
+.flip{font:inherit;background:rgba(0,0,0,.5);color:#fff;border:0;border-radius:999px;padding:6px 14px;cursor:pointer}
+.hud-r{display:flex;gap:8px}
+.big-count{font-family:var(--display);font-weight:700;font-size:96px;line-height:1;text-shadow:0 2px 16px rgba(0,0,0,.7)}
 .oval{position:absolute;left:50%;top:44%;width:62vw;max-width:340px;aspect-ratio:3/4;transform:translate(-50%,-50%);border:3px dashed rgba(255,255,255,.55);border-radius:50%;pointer-events:none}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 .flash.on{opacity:.35;transition:none}
@@ -78,19 +87,35 @@ p{margin:0}
 
 <!-- START -->
 <main class="page" id="start">
-  <div class="rec"><i></i>Head scan</div>
+  <div class="rec"><i></i>Character scan</div>
   <h1>Face Orbit</h1>
-  <p class="muted">Takes about 30 seconds. Your photos go straight to Gabe at VS WRLD to create an AI character of you.</p>
+  <p class="muted">Takes under a minute. Your photos go straight to Gabe at VS WRLD to create an AI character of you.</p>
   <div class="field"><label for="name">Your name</label><input id="name" autocomplete="name" placeholder="First and last name" required></div>
-  <ul class="tips">
+  <div class="field"><label>What are we scanning?</label>
+    <div class="kinds" role="group" aria-label="Scan type">
+      <button class="kind" id="kFace" type="button" aria-pressed="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="16" cy="15" rx="9" ry="11"/><circle cx="12.5" cy="14" r="1.2" fill="currentColor"/><circle cx="19.5" cy="14" r="1.2" fill="currentColor"/><path d="M13 20c2 1.5 4 1.5 6 0"/></svg>Face</button>
+      <button class="kind" id="kBody" type="button" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="16" cy="5.5" r="3"/><path d="M16 9v11M8 12.5l8-1.5 8 1.5M16 20l-4 9M16 20l4 9"/></svg>Full body</button>
+    </div>
+  </div>
+  <ul class="tips" id="tipsFace">
     <li>Face a window or soft light. No hat, hair off your face.</li>
     <li>Neutral face, mouth closed, glasses off.</li>
     <li>Turn your sound on so you can hear the cues.</li>
   </ul>
-  <div class="modes">
-    <button class="mode" id="mSelf" type="button"><strong>I'm filming myself</strong><span>Front camera at arm's length. You turn your head when it tells you.</span></button>
+  <ul class="tips" id="tipsBody" hidden>
+    <li>Wear the outfit you want your character in. Fitted clothes show your shape best.</li>
+    <li>Plain wall behind you, even light, about 8 to 10 feet of space.</li>
+    <li>Phone on a tripod or propped up at chest height. Sound on so you hear the cues.</li>
+  </ul>
+  <div class="modes" id="modesFace">
+    <button class="mode" id="mSelf" type="button"><strong>I'm filming myself</strong><span>Front camera. Keep your head still and sweep the phone around your face when it tells you.</span></button>
     <button class="mode" id="mHelper" type="button"><strong>Someone's filming me</strong><span>Back camera. You sit still, they walk circles around you. Best quality.</span></button>
-    <button class="mode" id="mUpload" type="button"><strong>Upload photos or a video</strong><span>Already shot it? Pick it from your camera roll.</span></button>
+    <button class="mode" data-upload type="button"><strong>Upload photos or a video</strong><span>Already shot it? Pick it from your camera roll.</span></button>
+  </div>
+  <div class="modes" id="modesBody" hidden>
+    <button class="mode" id="mTripod" type="button"><strong>Phone on a tripod</strong><span>Set it up, step back, and turn when it tells you. No help needed. Gets front, sides, back and two full spins.</span></button>
+    <button class="mode" id="mBodyHelper" type="button"><strong>Someone's filming me</strong><span>You stand still, they walk slow circles around you head to toe.</span></button>
+    <button class="mode" data-upload type="button"><strong>Upload photos or a video</strong><span>Already shot it? Pick it from your camera roll.</span></button>
   </div>
   <p class="err" id="startErr" hidden></p>
   <input id="fileIn" type="file" accept="image/*,video/*" multiple hidden>
@@ -100,8 +125,9 @@ p{margin:0}
 <div id="cam" hidden>
   <video id="video" playsinline muted autoplay></video>
   <div class="oval" id="oval"></div>
+  <div class="body-guide" id="bodyGuide" hidden></div>
   <div class="flash" id="flash"></div>
-  <div class="hud"><span class="count" id="count">0 shots</span><button class="close" id="camClose" type="button">Cancel</button></div>
+  <div class="hud"><span class="count" id="count">0 shots</span><div class="hud-r"><button class="flip" id="flip" type="button">Flip camera</button><button class="close" id="camClose" type="button">Cancel</button></div></div>
   <div class="bottom">
     <div class="dots" id="dots"></div>
     <div class="cue" id="cue">Line your face up in the oval</div>
@@ -149,25 +175,52 @@ p{margin:0}
   const show = id => screens.forEach(s => $(s).hidden = s !== id);
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  const SELF = [
-    {cue:'Look straight at the camera', ms:2500, shots:4},
-    {cue:'Slowly turn your head to your left', ms:4000, shots:6},
-    {cue:'Back to center', ms:1800, shots:2},
-    {cue:'Slowly turn your head to your right', ms:4000, shots:6},
-    {cue:'Back to center', ms:1800, shots:2},
-    {cue:'Tilt your chin up a little', ms:2400, shots:3},
-    {cue:'Now tilt your chin down', ms:2400, shots:3},
-    {cue:'Hold the phone up high and look at it', ms:2600, shots:3},
-    {cue:'Now hold it low and look at it', ms:2600, shots:3},
-  ];
-  const HELPER = [
-    {cue:'Walk one slow full circle at eye level', ms:20000, shots:14},
-    {cue:'Hold the phone higher, angled down, and circle again', ms:18000, shots:11},
-    {cue:'Now hold it low, angled up, and circle once more', ms:18000, shots:11},
-  ];
+  const SEQ = {
+    // Face, filming yourself: head stays still, the phone moves around it
+    self: [
+      {cue:'Hold the phone straight out and look at the lens', ms:2500, shots:4},
+      {cue:'Keep your head still. Slowly swing the phone around to your left side', ms:4500, shots:7},
+      {cue:'Bring it back to center', ms:2000, shots:2},
+      {cue:'Now slowly swing it around to your right side', ms:4500, shots:7},
+      {cue:'Back to center', ms:2000, shots:2},
+      {cue:'Raise the phone above your head, angled down at your face', ms:3000, shots:4},
+      {cue:'Now bring it down low, angled up at your face', ms:3000, shots:4},
+      {cue:'Last one. Turn your head all the way left, then all the way right', ms:5000, shots:6},
+    ],
+    // Face, a helper walks around you
+    helper: [
+      {cue:'Walk one slow full circle at eye level', ms:20000, shots:14},
+      {cue:'Hold the phone higher, angled down, and circle again', ms:18000, shots:11},
+      {cue:'Now hold it low, angled up, and circle once more', ms:18000, shots:11},
+    ],
+    // Full body on a tripod: the person turns, the phone stays put
+    tripod: [
+      {cue:'Face the camera, arms relaxed at your sides', ms:3000, shots:4},
+      {cue:'Quarter turn to your right', ms:3000, shots:3},
+      {cue:'Another quarter turn. Back to the camera', ms:3000, shots:3},
+      {cue:'Another quarter turn', ms:3000, shots:3},
+      {cue:'Back to facing the camera', ms:2500, shots:2},
+      {cue:'Arms straight out to your sides', ms:3000, shots:3},
+      {cue:'Keep your arms out and slowly turn in a full circle', ms:14000, shots:12},
+      {cue:'Arms down. One more slow full circle', ms:14000, shots:12},
+    ],
+    // Full body, a helper walks around you
+    bodyHelper: [
+      {cue:'Walk one slow full circle with the phone at chest height. Keep their whole body in frame', ms:22000, shots:16},
+      {cue:'Hold the phone high, angled down, and circle again', ms:18000, shots:11},
+      {cue:'Now crouch low, angled up, and circle once more', ms:18000, shots:11},
+    ],
+  };
+  const MODES = {
+    self:       {facing:'user',        guide:'face', lead:0,  hint:'Line your face up in the oval'},
+    helper:     {facing:'environment', guide:'none', lead:0,  hint:'Stand about an arm’s length away with their face in frame'},
+    tripod:     {facing:'environment', guide:'body', lead:10, hint:'Set the phone at chest height. Step back until your whole body fits the outline, then tap Start'},
+    bodyHelper: {facing:'environment', guide:'body', lead:0,  hint:'Step back until their whole body fits the outline, head to toe'},
+  };
+  let kind = 'face', mode = 'self', facing = 'user';
 
   let shots = [];        // {blob,url,off}
-  let stream = null, steps = SELF, aborted = false, running = false, wakeLock = null;
+  let stream = null, steps = SEQ.self, aborted = false, running = false, wakeLock = null;
   const video = $('video'), work = $('work');
 
   // ---------- helpers ----------
@@ -204,25 +257,29 @@ p{margin:0}
   function startErr(t){ $('startErr').textContent = t; $('startErr').hidden = !t; }
 
   // ---------- camera ----------
-  async function openCamera(facing){
+  async function startStream(){
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:facing, width:{ideal:1920}, height:{ideal:1080}}});
+    video.srcObject = stream;
+    video.classList.toggle('mirror', facing === 'user');
+    try { await video.play(); } catch(e){}
+  }
+  async function openCamera(m){
     startErr('');
+    mode = m; steps = SEQ[m]; facing = MODES[m].facing;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       startErr('This browser can’t open the camera. Open the link in Safari (iPhone) or Chrome.'); return;
     }
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:facing, width:{ideal:1920}, height:{ideal:1080}}});
-    } catch(e){
-      startErr('Camera access was blocked. Allow camera access for this site in your browser settings, then try again.'); return;
-    }
-    video.srcObject = stream;
-    video.classList.toggle('mirror', facing === 'user');
-    $('oval').hidden = facing !== 'user';
-    $('cue').textContent = facing === 'user' ? 'Line your face up in the oval' : 'Stand about an arm’s length away with their face in frame';
+    try { await startStream(); }
+    catch(e){ startErr('Camera access was blocked. Allow camera access for this site in your browser settings, then try again.'); return; }
+    $('oval').hidden = MODES[m].guide !== 'face';
+    $('bodyGuide').hidden = MODES[m].guide !== 'body';
+    $('flip').hidden = false;
+    $('cue').textContent = MODES[m].hint;
     $('go').hidden = false; $('go').disabled = false;
     $('dots').innerHTML = steps.map(() => '<i></i>').join('');
     $('count').textContent = '0 shots';
     show('cam');
-    try { await video.play(); } catch(e){}
   }
   function closeCamera(){
     if (stream) stream.getTracks().forEach(t => t.stop());
@@ -249,6 +306,16 @@ p{margin:0}
     running = true; aborted = false;
     $('go').hidden = true;
     try { wakeLock = await navigator.wakeLock?.request('screen'); } catch(e){}
+    $('flip').hidden = true;
+    const lead = MODES[mode].lead;
+    if (lead){
+      say('Walk to your spot. Starting in ' + lead + ' seconds.');
+      for (let n = lead; n > 3 && !aborted; n--){
+        $('cue').innerHTML = '<div class="big-count"></div>Walk to your spot';
+        $('cue').firstChild.textContent = n;
+        await sleep(1000);
+      }
+    }
     for (const n of [3,2,1]){ if (aborted) break; $('cue').textContent = n; say(String(n)); await sleep(900); }
     const dots = [...$('dots').children];
     for (let s = 0; s < steps.length && !aborted; s++){
@@ -324,7 +391,7 @@ p{margin:0}
         $('workTxt').textContent = 'Photo ' + (i+1) + ' of ' + pics.length;
         const b = await imageToJpeg(pics[i]); if (b) addShot(b);
       }
-      const per = vids.length > 1 ? 24 : 36;
+      const per = (vids.length > 1 ? 24 : 36) + (kind === 'body' ? 12 : 0);
       for (let i = 0; i < vids.length; i++) await videoToShots(vids[i], i, vids.length, per);
       openReview();
     } catch(e){
@@ -356,7 +423,7 @@ p{margin:0}
   function sessionId(){
     const d = new Date(), p = n => String(n).padStart(2,'0');
     const slug = getName().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30) || 'guest';
-    return slug + '_' + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '_' + Math.random().toString(36).slice(2,6);
+    return slug + '_' + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '_' + Math.random().toString(36).slice(2,6) + '-' + kind;
   }
   async function upload(sid, i, blob){
     for (let attempt = 0; attempt < 3; attempt++){
@@ -399,9 +466,26 @@ p{margin:0}
   }
 
   // ---------- wiring ----------
-  $('mSelf').onclick = () => { if (needName()) return; steps = SELF; openCamera('user'); };
-  $('mHelper').onclick = () => { if (needName()) return; steps = HELPER; openCamera('environment'); };
-  $('mUpload').onclick = () => { if (needName()) return; startErr(''); $('fileIn').click(); };
+  function setKind(k){
+    kind = k;
+    $('kFace').setAttribute('aria-pressed', String(k === 'face'));
+    $('kBody').setAttribute('aria-pressed', String(k === 'body'));
+    $('tipsFace').hidden = $('modesFace').hidden = k !== 'face';
+    $('tipsBody').hidden = $('modesBody').hidden = k !== 'body';
+    startErr('');
+  }
+  $('kFace').onclick = () => setKind('face');
+  $('kBody').onclick = () => setKind('body');
+  const cam = m => () => { if (needName()) return; openCamera(m); };
+  $('mSelf').onclick = cam('self');
+  $('mHelper').onclick = cam('helper');
+  $('mTripod').onclick = cam('tripod');
+  $('mBodyHelper').onclick = cam('bodyHelper');
+  document.querySelectorAll('[data-upload]').forEach(b => b.onclick = () => { if (needName()) return; startErr(''); $('fileIn').click(); });
+  $('flip').onclick = async () => {
+    facing = facing === 'user' ? 'environment' : 'user';
+    try { await startStream(); } catch(e){ facing = facing === 'user' ? 'environment' : 'user'; }
+  };
   $('name').addEventListener('input', () => { if (getName().length >= 2) startErr(''); });
   $('fileIn').onchange = e => { handleFiles(e.target.files); e.target.value = ''; };
   $('go').onclick = () => { say(' '); runSequence(); };
