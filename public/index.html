@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Face Orbit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#0f1115; --surface:#181b21; --ink:#eef0f3; --muted:#9aa1ad; --line:#2a2e36;
+  --accent:#ff5a4c; --accent-ink:#160f0e; --ring:#6f97ff; --ok:#3fbf86;
+  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);font-size:16px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+.page{max-width:620px;margin:0 auto;padding:calc(28px + env(safe-area-inset-top,0px)) 18px calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:22px}
+.rec{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.rec i{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.rec i{animation:none}}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(38px,10vw,56px);line-height:1;margin:0;letter-spacing:-.02em}
+h2{font-family:var(--display);font-weight:500;font-size:24px;margin:0}
+p{margin:0}
+.muted{color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.field input,.field select{font:inherit;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.modes{display:flex;flex-direction:column;gap:10px}
+.mode{font:inherit;text-align:left;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.mode strong{font-family:var(--display);font-weight:500;font-size:19px}
+.mode span{color:var(--muted);font-size:14px}
+.mode:active{border-color:var(--accent)}
+.btn{font:inherit;font-weight:600;border-radius:999px;padding:13px 20px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45}
+.btn:focus-visible,.mode:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.tips{margin:0;padding-left:20px;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:4px}
+.err{color:var(--accent);font-size:14px}
+
+/* camera */
+#cam{position:fixed;inset:0;background:#000;display:flex;flex-direction:column}
+#cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#cam video.mirror{transform:scaleX(-1)}
+.oval{position:absolute;left:50%;top:44%;width:62vw;max-width:340px;aspect-ratio:3/4;transform:translate(-50%,-50%);border:3px dashed rgba(255,255,255,.55);border-radius:50%;pointer-events:none}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+.flash.on{opacity:.35;transition:none}
+.hud{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;background:linear-gradient(rgba(0,0,0,.6),transparent)}
+.count{font-family:var(--mono);font-size:13px;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
+.close{font:inherit;background:rgba(0,0,0,.5);color:#fff;border:0;border-radius:999px;padding:6px 14px;cursor:pointer}
+.bottom{position:relative;z-index:2;margin-top:auto;padding:24px 18px calc(24px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,rgba(0,0,0,.75));display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
+.cue{font-family:var(--display);font-weight:700;font-size:clamp(26px,7vw,36px);line-height:1.1;text-shadow:0 2px 12px rgba(0,0,0,.6);text-wrap:balance}
+.dots{display:flex;gap:6px}
+.dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3)}
+.dots i.done{background:var(--ok)} .dots i.now{background:var(--accent)}
+
+/* review */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.cell{position:relative;border-radius:8px;overflow:hidden;border:2px solid transparent;background:var(--surface);aspect-ratio:3/4;padding:0;cursor:pointer}
+.cell img{width:100%;height:100%;object-fit:cover;display:block}
+.cell .n{position:absolute;left:5px;top:4px;font-family:var(--mono);font-size:10px;background:rgba(0,0,0,.55);color:#fff;padding:1px 5px;border-radius:4px}
+.cell.off{border-color:var(--accent)}
+.cell.off img{opacity:.25;filter:grayscale(1)}
+.bar{height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--ring);transition:width .15s}
+.status{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.big-ok{font-family:var(--display);font-size:40px;font-weight:700;color:var(--ok);line-height:1}
+</style>
+</head>
+<body>
+
+<!-- START -->
+<main class="page" id="start">
+  <div class="rec"><i></i>Head scan</div>
+  <h1>Face Orbit</h1>
+  <p class="muted">Takes about 30 seconds. Your photos go straight to Gabe at VS WRLD to create an AI character of you.</p>
+  <div class="field"><label for="name">Your name</label><input id="name" autocomplete="name" placeholder="First and last name" required></div>
+  <ul class="tips">
+    <li>Face a window or soft light. No hat, hair off your face.</li>
+    <li>Neutral face, mouth closed, glasses off.</li>
+    <li>Turn your sound on so you can hear the cues.</li>
+  </ul>
+  <div class="modes">
+    <button class="mode" id="mSelf" type="button"><strong>I'm filming myself</strong><span>Front camera at arm's length. You turn your head when it tells you.</span></button>
+    <button class="mode" id="mHelper" type="button"><strong>Someone's filming me</strong><span>Back camera. You sit still, they walk circles around you. Best quality.</span></button>
+    <button class="mode" id="mUpload" type="button"><strong>Upload photos or a video</strong><span>Already shot it? Pick it from your camera roll.</span></button>
+  </div>
+  <p class="err" id="startErr" hidden></p>
+  <input id="fileIn" type="file" accept="image/*,video/*" multiple hidden>
+</main>
+
+<!-- CAMERA -->
+<div id="cam" hidden>
+  <video id="video" playsinline muted autoplay></video>
+  <div class="oval" id="oval"></div>
+  <div class="flash" id="flash"></div>
+  <div class="hud"><span class="count" id="count">0 shots</span><button class="close" id="camClose" type="button">Cancel</button></div>
+  <div class="bottom">
+    <div class="dots" id="dots"></div>
+    <div class="cue" id="cue">Line your face up in the oval</div>
+    <button class="btn primary" id="go" type="button">Start</button>
+  </div>
+</div>
+
+<!-- WORKING (video extraction) -->
+<main class="page" id="working" hidden>
+  <h2>Pulling shots from your video</h2>
+  <div class="bar"><span id="workFill"></span></div>
+  <p class="status" id="workTxt">Preparing…</p>
+</main>
+
+<!-- REVIEW -->
+<main class="page" id="review" hidden>
+  <h2>Check your shots</h2>
+  <p class="muted">Tap any blurry or blinking photo to skip it.</p>
+  <p class="status" id="revCount"></p>
+  <div class="grid" id="grid"></div>
+  <div class="row">
+    <button class="btn primary" id="send" type="button">Send to Gabe</button>
+    <button class="btn" id="redo" type="button">Start over</button>
+  </div>
+  <div id="sendProg" hidden>
+    <div class="bar"><span id="sendFill"></span></div>
+    <p class="status" id="sendTxt"></p>
+  </div>
+  <p class="err" id="sendErr" hidden></p>
+</main>
+
+<!-- DONE -->
+<main class="page" id="done" hidden>
+  <div class="big-ok">Sent.</div>
+  <p id="doneTxt">Gabe has your photos. You can close this page.</p>
+  <div class="row"><button class="btn" id="again" type="button">Do another scan</button></div>
+</main>
+
+<canvas id="work" hidden></canvas>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const screens = ['start','cam','working','review','done'];
+  const show = id => screens.forEach(s => $(s).hidden = s !== id);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  const SELF = [
+    {cue:'Look straight at the camera', ms:2500, shots:4},
+    {cue:'Slowly turn your head to your left', ms:4000, shots:6},
+    {cue:'Back to center', ms:1800, shots:2},
+    {cue:'Slowly turn your head to your right', ms:4000, shots:6},
+    {cue:'Back to center', ms:1800, shots:2},
+    {cue:'Tilt your chin up a little', ms:2400, shots:3},
+    {cue:'Now tilt your chin down', ms:2400, shots:3},
+    {cue:'Hold the phone up high and look at it', ms:2600, shots:3},
+    {cue:'Now hold it low and look at it', ms:2600, shots:3},
+  ];
+  const HELPER = [
+    {cue:'Walk one slow full circle at eye level', ms:20000, shots:14},
+    {cue:'Hold the phone higher, angled down, and circle again', ms:18000, shots:11},
+    {cue:'Now hold it low, angled up, and circle once more', ms:18000, shots:11},
+  ];
+
+  let shots = [];        // {blob,url,off}
+  let stream = null, steps = SELF, aborted = false, running = false, wakeLock = null;
+  const video = $('video'), work = $('work');
+
+  // ---------- helpers ----------
+  const small = document.createElement('canvas');
+  function sharpness(src, w, h){
+    const sw = 180, sh = Math.max(1, Math.round(h * sw / w));
+    small.width = sw; small.height = sh;
+    const c = small.getContext('2d', {willReadFrequently:true});
+    c.drawImage(src, 0, 0, sw, sh);
+    const d = c.getImageData(0, 0, sw, sh).data, g = new Float32Array(sw*sh);
+    for (let i = 0, p = 0; i < g.length; i++, p += 4) g[i] = d[p]*.299 + d[p+1]*.587 + d[p+2]*.114;
+    let s = 0, q = 0, n = 0;
+    for (let y = 1; y < sh-1; y++) for (let x = 1; x < sw-1; x++){
+      const i = y*sw + x, l = g[i-1] + g[i+1] + g[i-sw] + g[i+sw] - 4*g[i];
+      s += l; q += l*l; n++;
+    }
+    const m = s/n; return q/n - m*m;
+  }
+  const toJpeg = c => new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
+  function say(text){
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; speechSynthesis.speak(u); } catch(e){}
+  }
+  function addShot(blob){
+    shots.push({blob, url: URL.createObjectURL(blob), off:false});
+    $('count').textContent = shots.length + (shots.length === 1 ? ' shot' : ' shots');
+  }
+  function flash(){ const f = $('flash'); f.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on'))); }
+  function getName(){ return $('name').value.trim(); }
+  function needName(){
+    if (getName().length >= 2) return false;
+    startErr('Type your name first so Gabe knows whose scan this is.');
+    $('name').focus(); return true;
+  }
+  function startErr(t){ $('startErr').textContent = t; $('startErr').hidden = !t; }
+
+  // ---------- camera ----------
+  async function openCamera(facing){
+    startErr('');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      startErr('This browser can’t open the camera. Open the link in Safari (iPhone) or Chrome.'); return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:facing, width:{ideal:1920}, height:{ideal:1080}}});
+    } catch(e){
+      startErr('Camera access was blocked. Allow camera access for this site in your browser settings, then try again.'); return;
+    }
+    video.srcObject = stream;
+    video.classList.toggle('mirror', facing === 'user');
+    $('oval').hidden = facing !== 'user';
+    $('cue').textContent = facing === 'user' ? 'Line your face up in the oval' : 'Stand about an arm’s length away with their face in frame';
+    $('go').hidden = false; $('go').disabled = false;
+    $('dots').innerHTML = steps.map(() => '<i></i>').join('');
+    $('count').textContent = '0 shots';
+    show('cam');
+    try { await video.play(); } catch(e){}
+  }
+  function closeCamera(){
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    try { wakeLock && wakeLock.release(); } catch(e){}
+    wakeLock = null;
+  }
+
+  async function bestFrame(ms){
+    const W = video.videoWidth, H = video.videoHeight;
+    if (work.width !== W || work.height !== H){ work.width = W; work.height = H; }
+    const ctx = work.getContext('2d');
+    let best = -1; const end = performance.now() + ms;
+    do {
+      const s = sharpness(video, W, H);
+      if (s > best){ best = s; ctx.drawImage(video, 0, 0, W, H); }
+      await sleep(80);
+    } while (performance.now() < end && !aborted);
+    return toJpeg(work);
+  }
+
+  async function runSequence(){
+    if (running) return;
+    running = true; aborted = false;
+    $('go').hidden = true;
+    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch(e){}
+    for (const n of [3,2,1]){ if (aborted) break; $('cue').textContent = n; say(String(n)); await sleep(900); }
+    const dots = [...$('dots').children];
+    for (let s = 0; s < steps.length && !aborted; s++){
+      const st = steps[s];
+      dots.forEach((d, i) => d.className = i < s ? 'done' : i === s ? 'now' : '');
+      $('cue').textContent = st.cue; say(st.cue);
+      await sleep(700);
+      const win = st.ms / st.shots;
+      for (let i = 0; i < st.shots && !aborted; i++){
+        const blob = await bestFrame(win);
+        if (aborted) break;
+        if (blob){ addShot(blob); flash(); }
+      }
+    }
+    running = false;
+    if (aborted) return;
+    say('Done. Nice work.');
+    closeCamera();
+    openReview();
+  }
+
+  // ---------- uploads from camera roll ----------
+  async function imageToJpeg(file){
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      const max = 2400, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      work.width = Math.round(img.naturalWidth*k); work.height = Math.round(img.naturalHeight*k);
+      work.getContext('2d').drawImage(img, 0, 0, work.width, work.height);
+      return await toJpeg(work);
+    } catch(e){ return null; } finally { URL.revokeObjectURL(url); }
+  }
+  const seek = (v, t) => new Promise((res, rej) => {
+    const ok = () => { v.removeEventListener('seeked', ok); clearTimeout(to); res(); };
+    const to = setTimeout(() => { v.removeEventListener('seeked', ok); rej(new Error('seek')); }, 8000);
+    v.addEventListener('seeked', ok); v.currentTime = t;
+  });
+  async function videoToShots(file, idx, total, count){
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.setAttribute('playsinline',''); v.preload = 'auto';
+    const url = URL.createObjectURL(file); v.src = url;
+    try {
+      await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('This browser can’t read that video. Try Safari, or pick photos instead.')); });
+      try { await v.play(); v.pause(); } catch(e){}
+      const dur = v.duration, W = v.videoWidth, H = v.videoHeight;
+      if (!isFinite(dur) || dur <= 0) throw new Error('Couldn’t read the length of that video.');
+      work.width = W; work.height = H;
+      const ctx = work.getContext('2d'), slot = dur / count, cands = 3;
+      for (let k = 0; k < count; k++){
+        let bestT = 0, best = -1;
+        for (let c = 0; c < cands; c++){
+          const t = Math.min(dur - 0.05, slot*k + slot*(c+.5)/cands);
+          await seek(v, t);
+          const s = sharpness(v, W, H); if (s > best){ best = s; bestT = t; }
+          const frac = ((k*cands + c + 1)/(count*cands) + idx)/total;
+          $('workFill').style.width = Math.round(frac*100) + '%';
+          $('workTxt').textContent = 'Video ' + (idx+1) + ' of ' + total + ' · shot ' + (k+1) + ' of ' + count;
+        }
+        await seek(v, bestT);
+        ctx.drawImage(v, 0, 0, W, H);
+        addShot(await toJpeg(work));
+      }
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function handleFiles(files){
+    files = [...files]; if (!files.length) return;
+    const vids = files.filter(f => f.type.startsWith('video/') || /\.(mov|mp4|m4v|webm)$/i.test(f.name));
+    const pics = files.filter(f => !vids.includes(f));
+    show('working'); $('workFill').style.width = '0%'; $('workTxt').textContent = 'Preparing…';
+    try {
+      for (let i = 0; i < pics.length; i++){
+        $('workTxt').textContent = 'Photo ' + (i+1) + ' of ' + pics.length;
+        const b = await imageToJpeg(pics[i]); if (b) addShot(b);
+      }
+      const per = vids.length > 1 ? 24 : 36;
+      for (let i = 0; i < vids.length; i++) await videoToShots(vids[i], i, vids.length, per);
+      openReview();
+    } catch(e){
+      show('start'); startErr(e.message || 'Something went wrong reading that file.');
+    }
+  }
+
+  // ---------- review + send ----------
+  function renderGrid(){
+    const g = $('grid'); g.textContent = '';
+    shots.forEach((s, i) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'cell' + (s.off ? ' off' : '');
+      b.setAttribute('aria-pressed', String(s.off));
+      b.setAttribute('aria-label', 'Photo ' + (i+1) + (s.off ? ', skipped' : ''));
+      b.innerHTML = '<img alt=""><span class="n"></span>';
+      b.firstChild.src = s.url; b.lastChild.textContent = String(i+1).padStart(2,'0');
+      b.onclick = () => { s.off = !s.off; renderGrid(); };
+      g.append(b);
+    });
+    const kept = shots.filter(s => !s.off).length;
+    $('revCount').textContent = kept + ' of ' + shots.length + ' photos will be sent';
+    $('send').disabled = !kept;
+  }
+  function openReview(){
+    $('sendProg').hidden = true; $('sendErr').hidden = true; $('send').disabled = false; $('redo').disabled = false;
+    renderGrid(); show('review');
+  }
+  function sessionId(){
+    const d = new Date(), p = n => String(n).padStart(2,'0');
+    const slug = getName().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30) || 'guest';
+    return slug + '_' + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '_' + Math.random().toString(36).slice(2,6);
+  }
+  async function upload(sid, i, blob){
+    for (let attempt = 0; attempt < 3; attempt++){
+      try {
+        const r = await fetch('/api/upload', {method:'POST', headers:{'content-type':'image/jpeg','x-session':sid,'x-index':String(i)}, body:blob});
+        if (r.ok) return;
+        if (r.status < 500) throw new Error((await r.json().catch(() => ({}))).error || 'Upload refused');
+      } catch(e){ if (attempt === 2) throw e; }
+      await sleep(800 * (attempt+1));
+    }
+    throw new Error('Upload failed');
+  }
+  async function send(){
+    const kept = shots.filter(s => !s.off);
+    const sid = sessionId();
+    $('send').disabled = true; $('redo').disabled = true; $('sendErr').hidden = true; $('sendProg').hidden = false;
+    try {
+      let done = 0;
+      const queue = kept.map((s, i) => [i, s]);
+      const worker = async () => {
+        while (queue.length){
+          const [i, s] = queue.shift();
+          await upload(sid, i, s.blob);
+          done++;
+          $('sendFill').style.width = Math.round(done/kept.length*100) + '%';
+          $('sendTxt').textContent = 'Sending ' + done + ' of ' + kept.length;
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+      $('doneTxt').textContent = 'Thanks, ' + getName().split(' ')[0] + '. Gabe has your ' + kept.length + ' photos. You can close this page.';
+      show('done');
+    } catch(e){
+      $('sendErr').textContent = 'Some photos didn’t send (' + (e.message || 'network error') + '). Check your connection and tap Send again.';
+      $('sendErr').hidden = false; $('send').disabled = false; $('redo').disabled = false;
+    }
+  }
+  function reset(){
+    shots.forEach(s => URL.revokeObjectURL(s.url)); shots = [];
+    show('start');
+  }
+
+  // ---------- wiring ----------
+  $('mSelf').onclick = () => { if (needName()) return; steps = SELF; openCamera('user'); };
+  $('mHelper').onclick = () => { if (needName()) return; steps = HELPER; openCamera('environment'); };
+  $('mUpload').onclick = () => { if (needName()) return; startErr(''); $('fileIn').click(); };
+  $('name').addEventListener('input', () => { if (getName().length >= 2) startErr(''); });
+  $('fileIn').onchange = e => { handleFiles(e.target.files); e.target.value = ''; };
+  $('go').onclick = () => { say(' '); runSequence(); };
+  $('camClose').onclick = () => { aborted = true; running = false; try{speechSynthesis.cancel()}catch(e){} closeCamera(); shots.length ? openReview() : show('start'); };
+  $('send').onclick = send;
+  $('redo').onclick = reset;
+  $('again').onclick = reset;
+  try { const n = localStorage.getItem('fo-name'); if (n) $('name').value = n; } catch(e){}
+  $('name').addEventListener('change', () => { try { localStorage.setItem('fo-name', $('name').value.trim()); } catch(e){} });
+})();
+</script>
+</body>
+</html>

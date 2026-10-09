@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Face Orbit Gallery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#0f1115; --surface:#181b21; --ink:#eef0f3; --muted:#9aa1ad; --line:#2a2e36;
+  --accent:#ff5a4c; --accent-ink:#160f0e; --ring:#6f97ff; --ok:#3fbf86;
+  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);font-size:15px;line-height:1.5}
+[hidden]{display:none!important}
+.page{max-width:900px;margin:0 auto;padding:calc(28px + env(safe-area-inset-top,0px)) 16px 48px;display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,7vw,44px);margin:0;letter-spacing:-.02em}
+h2{font-family:var(--display);font-weight:500;font-size:20px;margin:0}
+p{margin:0}
+.muted{color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+input{font:inherit;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-width:0;flex:1}
+.btn{font:inherit;font-weight:600;border-radius:999px;padding:10px 16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--accent)}
+.btn:disabled{opacity:.45}
+.btn:focus-visible,input:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.scan{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.meta{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
+.grid a{display:block;aspect-ratio:3/4;border-radius:6px;overflow:hidden;background:var(--bg)}
+.grid img{width:100%;height:100%;object-fit:cover;display:block}
+.err{color:var(--accent)}
+.ok{color:var(--ok)}
+</style>
+</head>
+<body>
+<main class="page">
+  <h1>Scans</h1>
+  <form class="row" id="keyForm">
+    <input id="key" type="password" placeholder="Gallery password" autocomplete="current-password">
+    <button class="btn primary" type="submit">Open</button>
+  </form>
+  <p class="muted" id="status">Enter your gallery password to see incoming scans.</p>
+  <div id="list" style="display:flex;flex-direction:column;gap:14px"></div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let key = '';
+  try { key = localStorage.getItem('fo-key') || ''; } catch(e){}
+  $('key').value = key;
+
+  const photoUrl = k => '/api/photo?k=' + encodeURIComponent(k) + '&key=' + encodeURIComponent(key);
+  function prettyDate(sid){
+    const m = sid.match(/_(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})_/);
+    if (!m) return '';
+    const d = new Date(+m[1], m[2]-1, +m[3], +m[4], +m[5]);
+    return d.toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+  }
+
+  async function load(){
+    $('status').className = 'muted'; $('status').textContent = 'Loading…';
+    const r = await fetch('/api/list', {headers:{'x-key':key}});
+    if (r.status === 401){ $('status').className = 'err'; $('status').textContent = 'Wrong password.'; $('list').textContent = ''; return; }
+    if (!r.ok){ $('status').className = 'err'; $('status').textContent = (await r.json().catch(() => ({}))).error || 'Couldn’t load scans.'; return; }
+    try { localStorage.setItem('fo-key', key); } catch(e){}
+    const {sessions} = await r.json();
+    $('status').className = 'muted';
+    $('status').textContent = sessions.length ? sessions.length + (sessions.length === 1 ? ' scan' : ' scans') : 'No scans yet. Send someone the main link.';
+    const list = $('list'); list.textContent = '';
+    sessions.forEach(s => {
+      const el = document.createElement('section'); el.className = 'scan';
+      const who = s.id.split('_')[0].replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+      const slug = s.id.split('_')[0];
+      el.innerHTML = '<div class="row" style="justify-content:space-between"><div><h2></h2><p class="meta"></p></div><div class="row"><button class="btn primary" type="button" data-a="zip">Download ZIP</button><button class="btn danger" type="button" data-a="del">Delete</button></div></div><div class="grid"></div><p class="meta" data-msg></p>';
+      el.querySelector('h2').textContent = who;
+      el.querySelector('.meta').textContent = s.files.length + ' photos · ' + prettyDate(s.id);
+      const grid = el.querySelector('.grid');
+      s.files.forEach(k => {
+        const a = document.createElement('a'); a.href = photoUrl(k); a.target = '_blank'; a.rel = 'noopener';
+        const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = photoUrl(k);
+        a.append(img); grid.append(a);
+      });
+      const msg = el.querySelector('[data-msg]');
+      const zipBtn = el.querySelector('[data-a="zip"]'), delBtn = el.querySelector('[data-a="del"]');
+      zipBtn.onclick = async () => {
+        zipBtn.disabled = true;
+        try {
+          const zip = new JSZip();
+          for (let i = 0; i < s.files.length; i++){
+            msg.textContent = 'Packing ' + (i+1) + ' of ' + s.files.length + '…';
+            const b = await (await fetch(photoUrl(s.files[i]))).blob();
+            zip.file(slug + '_' + String(i+1).padStart(3,'0') + '.jpg', b);
+          }
+          const blob = await zip.generateAsync({type:'blob', compression:'STORE'});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = s.id + '.zip';
+          document.body.append(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+          msg.className = 'meta ok'; msg.textContent = 'ZIP ready.';
+        } catch(e){ msg.className = 'meta err'; msg.textContent = 'Couldn’t build the ZIP. Try again.'; }
+        zipBtn.disabled = false;
+      };
+      let armed = false;
+      delBtn.onclick = async () => {
+        if (!armed){ armed = true; delBtn.textContent = 'Tap again to delete'; setTimeout(() => { armed = false; delBtn.textContent = 'Delete'; }, 4000); return; }
+        delBtn.disabled = true;
+        const r = await fetch('/api/delete', {method:'POST', headers:{'x-key':key, 'content-type':'application/json'}, body: JSON.stringify({session: s.id})});
+        if (r.ok) el.remove(); else { delBtn.disabled = false; msg.className = 'meta err'; msg.textContent = 'Couldn’t delete this scan.'; }
+      };
+      list.append(el);
+    });
+  }
+
+  $('keyForm').addEventListener('submit', e => { e.preventDefault(); key = $('key').value.trim(); if (key) load(); });
+  if (key) load();
+})();
+</script>
+</body>
+</html>
